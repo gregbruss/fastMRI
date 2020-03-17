@@ -6,3 +6,7 @@ logs
 *.hdr
 *.vscode
 recon-workspace.code-workspace
+experiments/unet/version_4/tf/events.out.tfevents.1583935027.mrmethods.12916.0
+*.csv
+*.experiment
+events.*
