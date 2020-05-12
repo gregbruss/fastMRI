@@ -4,10 +4,21 @@ Accelerating Magnetic Resonance Imaging (MRI) by acquiring fewer measurements ha
 potential to reduce medical costs, minimize stress to patients and make MR imaging
 possible in applications where it is currently prohibitively slow or expensive.
 
-[fastMRI](http://fastMRI.org) is a collaborative research project from Facebook AI Research (FAIR)
-and NYU Langone Health to investigate the use of AI to make MRI scans faster.
-NYU Langone Health has released fully anonymized knee and brain MRI datasets that can
-be downloaded from [the fastMRI dataset page](https://fastmri.med.nyu.edu/).
+Multi-Echo Gradient Echo (ME-GRE) is a very common clinical MR sequence. It provides abundant 
+contrast information which is used by clinicians to do all sorts of things such as 
+disease assessment, search for biomarkers, iron deposits and myelination. 
+
+When reconstructing these echoes jointly, we can make use of techniques CAIPI-like sampling [2] 
+to sample along ky − kz to create controlled aliasing in the two phase encoding directions, 
+which increases the distance between aliased artifacts in the reconstructed image 
+(the aliased voxels are still present, but they are further away from each other and shifted 
+to the corners of image space).
+
+
+This code builds on top of [fastMRI](http://fastMRI.org), a collaborative research project 
+from Facebook AI Research (FAIR) and NYU Langone Health to investigate the use of AI
+to make MRI scans faster. NYU Langone Health has released fully anonymized knee and 
+brain MRI datasets that can be downloaded from [the fastMRI dataset page](https://fastmri.med.nyu.edu/).
 
 
 This repository contains convenient PyTorch data loaders, subsampling functions, evaluation
