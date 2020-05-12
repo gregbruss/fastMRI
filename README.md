@@ -1,5 +1,4 @@
-# fastMRI - Branch Greg
-# March 17
+## Deep Learning Based Joint Reconstruction of Multi-Echo, Multi-Contrast MR Data
 
 Accelerating Magnetic Resonance Imaging (MRI) by acquiring fewer measurements has the
 potential to reduce medical costs, minimize stress to patients and make MR imaging
