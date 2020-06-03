@@ -63,7 +63,8 @@ class DataTransform:
                 mean (float): Mean value used for normalization.
                 std (float): Standard deviation value used for normalization.
         """
-        kspace=np.stack([kspace for i in range(4)],axis=0)
+
+        
         kspace = transforms.to_tensor(kspace)
     
         # Apply mask
@@ -88,7 +89,7 @@ class DataTransform:
         # Absolute value
         image = transforms.complex_abs(image)
         # Apply Root-Sum-of-Squares if multicoil data
-        #if self.which_challenge == 'multicoil':
+        #self.which_challenge == 'multicoil':
           #  image = transforms.root_sum_of_squares(image)
         # Normalize input
         image, mean, std = transforms.normalize_instance(image, eps=1e-11)

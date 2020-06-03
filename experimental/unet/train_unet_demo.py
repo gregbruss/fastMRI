@@ -47,7 +47,7 @@ def build_args():
     # ------------------------
     # TRAINING ARGUMENTS
     # ------------------------
-    path_config = pathlib.Path.cwd() /"fastmri_dirs.yaml"
+    path_config = pathlib.Path.cwd() / ".." / ".." / "fastmri_dirs.yaml"
     knee_path = fetch_dir("knee_path", path_config)
     brain_path = fetch_dir("brain_path", path_config)
     logdir = fetch_dir("log_path", path_config) / "unet" / "unet_demo"
