@@ -16,6 +16,7 @@ from torch.utils.data import DistributedSampler, DataLoader
 from common import evaluate
 from common.utils import save_reconstructions
 from data.mri_data import SliceData
+from data.volume_sampler import VolumeSampler
 
 
 class MRIModel(pl.LightningModule):
@@ -51,35 +52,39 @@ class MRIModel(pl.LightningModule):
             sample_rate=sample_rate,
             challenge=self.hparams.challenge
         )
-        sampler = DistributedSampler(dataset)
+
+        is_train = (data_partition == 'train')
+        if is_train:
+            sampler = DistributedSampler(dataset)
+        else:
+            sampler = VolumeSampler(dataset)
+
         return DataLoader(
             dataset=dataset,
             batch_size=self.hparams.batch_size,
-            num_workers=8,
-            pin_memory=True,
+            num_workers=4,
+            pin_memory=False,
+            drop_last=is_train,
             sampler=sampler,
         )
 
     def train_data_transform(self):
         raise NotImplementedError
 
-    @pl.data_loader
     def train_dataloader(self):
         return self._create_data_loader(self.train_data_transform(), data_partition='train')
 
     def val_data_transform(self):
         raise NotImplementedError
 
-    @pl.data_loader
     def val_dataloader(self):
         return self._create_data_loader(self.val_data_transform(), data_partition='val')
 
     def test_data_transform(self):
         raise NotImplementedError
 
-    @pl.data_loader
     def test_dataloader(self):
-        return self._create_data_loader(self.test_data_transform(), data_partition='test', sample_rate=1.)
+        return self._create_data_loader(self.test_data_transform(), data_partition=self.hparams.mode, sample_rate=1.)
 
     def _evaluate(self, val_logs):
         losses = []
@@ -127,11 +132,11 @@ class MRIModel(pl.LightningModule):
         _save_image(outputs, 'Reconstruction')
         _save_image(np.abs(targets - outputs), 'Error')
 
-    def validation_end(self, val_logs):
+    def validation_epoch_end(self, val_logs):
         self._visualize(val_logs)
         return self._evaluate(val_logs)
 
-    def test_end(self, test_logs):
+    def test_epoch_end(self, test_logs):
         outputs = defaultdict(list)
         for log in test_logs:
             for i, (fname, slice) in enumerate(zip(log['fname'], log['slice'])):
