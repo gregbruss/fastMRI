@@ -74,11 +74,14 @@ class SliceData(Dataset):
 
     def __getitem__(self, i):
         fname, slice, padding_left, padding_right = self.examples[i]
-        with h5py.File(fname, 'r') as data:
-            kspace = data['kspace'][slice]
-            mask = np.asarray(data['mask']) if 'mask' in data else None
-            target = data[self.recons_key][slice] if self.recons_key in data else None
-            attrs = dict(data.attrs)
-            attrs['padding_left'] = padding_left
-            attrs['padding_right'] = padding_right
-            return self.transform(kspace, mask, target, attrs, fname.name, slice)
+        try:
+            with h5py.File(fname, 'r') as data:
+                kspace = data['kspace'][slice]
+                mask = np.asarray(data['mask']) if 'mask' in data else None
+                target = data[self.recons_key][slice] if self.recons_key in data else None
+                attrs = dict(data.attrs)
+                attrs['padding_left'] = padding_left
+                attrs['padding_right'] = padding_right
+                return self.transform(kspace, mask, target, attrs, fname.name, slice)
+        except:
+            pass

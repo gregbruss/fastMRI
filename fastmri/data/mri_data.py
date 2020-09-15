@@ -146,40 +146,43 @@ class SliceDataset(Dataset):
         if dataset_cache.get(root) is None:
             files = list(pathlib.Path(root).iterdir())
             for fname in sorted(files):
-                with h5py.File(fname, "r") as hf:
-                    hdr = ismrmrd.xsd.CreateFromDocument(hf["ismrmrd_header"][()])
-                    enc = hdr.encoding[0]
+                try:
+                    with h5py.File(fname, "r") as hf:
+                        hdr = ismrmrd.xsd.CreateFromDocument(hf["ismrmrd_header"][()])
+                        enc = hdr.encoding[0]
 
-                    enc_size = (
-                        enc.encodedSpace.matrixSize.x,
-                        enc.encodedSpace.matrixSize.y,
-                        enc.encodedSpace.matrixSize.z,
-                    )
-                    recon_size = (
-                        enc.reconSpace.matrixSize.x,
-                        enc.reconSpace.matrixSize.y,
-                        enc.reconSpace.matrixSize.z,
-                    )
+                        enc_size = (
+                            enc.encodedSpace.matrixSize.x,
+                            enc.encodedSpace.matrixSize.y,
+                            enc.encodedSpace.matrixSize.z,
+                        )
+                        recon_size = (
+                            enc.reconSpace.matrixSize.x,
+                            enc.reconSpace.matrixSize.y,
+                            enc.reconSpace.matrixSize.z,
+                        )
 
-                    enc_limits_center = enc.encodingLimits.kspace_encoding_step_1.center
-                    enc_limits_max = (
-                        enc.encodingLimits.kspace_encoding_step_1.maximum + 1
-                    )
-                    padding_left = enc_size[1] // 2 - enc_limits_center
-                    padding_right = padding_left + enc_limits_max
+                        enc_limits_center = enc.encodingLimits.kspace_encoding_step_1.center
+                        enc_limits_max = (
+                            enc.encodingLimits.kspace_encoding_step_1.maximum + 1
+                        )
+                        padding_left = enc_size[1] // 2 - enc_limits_center
+                        padding_right = padding_left + enc_limits_max
 
-                    num_slices = hf["kspace"].shape[0]
+                        num_slices = hf["kspace"].shape[0]
 
-                metadata = {
-                    "padding_left": padding_left,
-                    "padding_right": padding_right,
-                    "encoding_size": enc_size,
-                    "recon_size": recon_size,
-                }
+                    metadata = {
+                        "padding_left": padding_left,
+                        "padding_right": padding_right,
+                        "encoding_size": enc_size,
+                        "recon_size": recon_size,
+                    }
 
-                self.examples += [
-                    (fname, slice_ind, metadata) for slice_ind in range(num_slices)
-                ]
+                    self.examples += [
+                        (fname, slice_ind, metadata) for slice_ind in range(num_slices)
+                    ]
+                except:
+                    pass
 
             dataset_cache[root] = self.examples
             logging.info(f"Saving dataset cache to {self.dataset_cache_file}.")
@@ -201,7 +204,8 @@ class SliceDataset(Dataset):
         fname, dataslice, metadata = self.examples[i]
 
         with h5py.File(fname, "r") as hf:
-            kspace = hf["kspace"][dataslice]
+            kspace = hf["kspace"][dataslice][0]
+            kspace=np.stack([kspace for i in range(4)],axis=0)
 
             mask = np.asarray(hf["mask"]) if "mask" in hf else None
 

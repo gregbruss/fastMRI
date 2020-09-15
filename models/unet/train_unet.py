@@ -63,7 +63,9 @@ class DataTransform:
                 mean (float): Mean value used for normalization.
                 std (float): Standard deviation value used for normalization.
         """
+        kspace=np.stack([kspace for i in range(4)],axis=0)
         kspace = transforms.to_tensor(kspace)
+    
         # Apply mask
         if self.mask_func:
             seed = None if not self.use_seed else tuple(map(ord, fname))
@@ -86,8 +88,8 @@ class DataTransform:
         # Absolute value
         image = transforms.complex_abs(image)
         # Apply Root-Sum-of-Squares if multicoil data
-        if self.which_challenge == 'multicoil':
-            image = transforms.root_sum_of_squares(image)
+        #if self.which_challenge == 'multicoil':
+          #  image = transforms.root_sum_of_squares(image)
         # Normalize input
         image, mean, std = transforms.normalize_instance(image, eps=1e-11)
         image = image.clamp(-6, 6)
@@ -191,7 +193,7 @@ class UnetMRIModel(MRIModel):
 def create_trainer(args):
     backend = 'ddp' if args.gpus > 0 else 'ddp_cpu'
     return Trainer(
-        default_save_path=args.exp_dir,
+        logger=args.exp_dir,
         max_epochs=args.num_epochs,
         gpus=args.gpus,
         num_nodes=args.nodes,

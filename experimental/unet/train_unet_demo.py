@@ -12,6 +12,7 @@ from argparse import ArgumentParser
 from pytorch_lightning import Trainer, seed_everything
 
 sys.path.append("../../")  # noqa: E402
+sys.path.append("/mnt/4TB_pcie/fastBrain")
 
 from fastmri.data.mri_data import fetch_dir
 from unet_module import UnetModule
@@ -39,15 +40,16 @@ def main(args):
         assert args.resume_from_checkpoint is not None
         trainer.test(model)
     else:
-        raise ValueError(f"unrecognized mode {args.mode}")
+        raise ValueError("unrecognized mode")
 
 
 def build_args():
     # ------------------------
     # TRAINING ARGUMENTS
     # ------------------------
-    path_config = pathlib.Path.cwd() / ".." / ".." / "fastmri_dirs.yaml"
+    path_config = pathlib.Path.cwd() /"fastmri_dirs.yaml"
     knee_path = fetch_dir("knee_path", path_config)
+    brain_path = fetch_dir("brain_path", path_config)
     logdir = fetch_dir("log_path", path_config) / "unet" / "unet_demo"
 
     parent_parser = ArgumentParser(add_help=False)
@@ -55,7 +57,7 @@ def build_args():
     parser = UnetModule.add_model_specific_args(parent_parser)
     parser = Trainer.add_argparse_args(parser)
 
-    num_gpus = 2
+    num_gpus = 1
     backend = "ddp"
     batch_size = 1 if backend == "ddp" else num_gpus
 
@@ -73,8 +75,8 @@ def build_args():
         lr_step_size=40,
         lr_gamma=0.1,
         weight_decay=0.0,
-        data_path=knee_path,
-        challenge="singlecoil",
+        data_path=brain_path,
+        challenge="multicoil",
         exp_dir=logdir,
         exp_name="unet_demo",
         test_split="test",
