@@ -89,8 +89,8 @@ class DataTransform:
         # Absolute value
         image = transforms.complex_abs(image)
         # Apply Root-Sum-of-Squares if multicoil data
-        #self.which_challenge == 'multicoil':
-          #  image = transforms.root_sum_of_squares(image)
+        if self.which_challenge == 'multicoil':
+            image = transforms.root_sum_of_squares(image)
         # Normalize input
         image, mean, std = transforms.normalize_instance(image, eps=1e-11)
         image = image.clamp(-6, 6)
@@ -194,7 +194,7 @@ class UnetMRIModel(MRIModel):
 def create_trainer(args):
     backend = 'ddp' if args.gpus > 0 else 'ddp_cpu'
     return Trainer(
-        logger=args.exp_dir,
+        default_save_path=args.exp_dir,
         max_epochs=args.num_epochs,
         gpus=args.gpus,
         num_nodes=args.nodes,
