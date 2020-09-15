@@ -220,8 +220,7 @@ class SliceDataset(Dataset):
         fname, dataslice, metadata = self.examples[i]
 
         with h5py.File(fname, "r") as hf:
-            kspace = hf["kspace"][dataslice][0]
-            kspace=np.stack([kspace for i in range(4)],axis=0)
+            kspace = hf["kspace"][dataslice]
 
             mask = np.asarray(hf["mask"]) if "mask" in hf else None
 
