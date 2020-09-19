@@ -18,6 +18,7 @@ from fastmri import MriModule
 from fastmri.data import transforms
 from fastmri.data.subsample import create_mask_for_mask_type
 from fastmri.models import Unet
+import numpy as np
 
 
 class UnetModule(MriModule):
@@ -234,17 +235,20 @@ class DataTransform(object):
                 fname (str): File name.
                 slice_num (int): Serial number of the slice.
         """
+        print("kspace loading in... The size of kspace is: ", kspace.shape)
         kspace = transforms.to_tensor(kspace)
-
+        print("Converted to kspace tensor. The size of kspace is now: ", kspace.shape)
         # apply mask
         if self.mask_func:
             seed = None if not self.use_seed else tuple(map(ord, fname))
+            print("Applying mask: ")
             masked_kspace, mask = transforms.apply_mask(kspace, self.mask_func, seed)
         else:
             masked_kspace = kspace
 
         # inverse Fourier transform to get zero filled solution
         image = fastmri.ifft2c(masked_kspace)
+        print("Calculating iFT to get zero filled image. The size of the image is now: ", image.shape)
 
         # crop input to correct size
         if target is not None:
@@ -257,13 +261,19 @@ class DataTransform(object):
             crop_size = (image.shape[-2], image.shape[-2])
 
         image = transforms.complex_center_crop(image, crop_size)
+        print("The image is being cropped to the center region. We now have multicoil, complex data, of dimension: ", image.shape)
 
         # absolute value
         image = fastmri.complex_abs(image)
+        print("Calculating absolute value of multicoil, complex data. The dimension is now: ", image.shape)
 
         # apply Root-Sum-of-Squares if multicoil data
         if self.which_challenge == "multicoil":
+            print("This is multicoil data. Running RSS coil combination on image with dimensions: ", image.shape)
             image = fastmri.rss(image)
+            print("RSS Coil Combination complete. The image is now of size: ", image.shape)
+            image = torch.stack([image for i in range(4)], dim = 0)
+            print("Multiplying the image by 4 along the last axis to simulate multiple echoes. The image is now of dimension: ",image.shape)
 
         # normalize input
         image, mean, std = transforms.normalize_instance(image, eps=1e-11)

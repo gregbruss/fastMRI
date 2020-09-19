@@ -48,22 +48,22 @@ def build_args():
     # ------------------------
     path_config = pathlib.Path.cwd() / ".." / ".." / "fastmri_dirs.yaml"
     brain_path = fetch_dir("brain_path", path_config)
-    logdir = fetch_dir("log_path", path_config) / "unet" / "unet_leaderboard"
+    logdir = fetch_dir("log_path", path_config) / "unet" / "lbsubtest-overfit"
 
     parent_parser = ArgumentParser(add_help=False)
 
     parser = UnetModule.add_model_specific_args(parent_parser)
     parser = Trainer.add_argparse_args(parser)
 
-    num_gpus = 32  # this was the number of GPUs for training
+    num_gpus = 1  # this was the number of GPUs for training
     backend = "ddp"
     batch_size = 1 if backend == "ddp" else num_gpus
 
     # module config config
     config = dict(
-        in_chans=1,
-        out_chans=1,
-        chans=256,
+        in_chans=4,
+        out_chans=4,
+        chans=128,
         num_pool_layers=4,
         drop_prob=0.0,
         mask_type="equispaced",
@@ -76,7 +76,7 @@ def build_args():
         data_path=brain_path,
         challenge="multicoil",
         exp_dir=logdir,
-        exp_name="unet_leaderboard",
+        exp_name="overfit-brain-test-lbsub",
         test_split="test",
         batch_size=batch_size,
     )
@@ -91,6 +91,8 @@ def build_args():
         max_epochs=50,
         seed=42,
         deterministic=True,
+        log_gpu_memory=True,
+        fast_dev_run = True
     )
 
     parser.add_argument("--mode", default="train", type=str)

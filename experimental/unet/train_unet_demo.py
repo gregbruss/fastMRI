@@ -40,7 +40,7 @@ def main(args):
         assert args.resume_from_checkpoint is not None
         trainer.test(model)
     else:
-        raise ValueError("unrecognized mode")
+        raise ValueError(f"unrecognized mode {args.mode}")
 
 
 def build_args():
@@ -50,14 +50,14 @@ def build_args():
     path_config = pathlib.Path.cwd() / ".." / ".." / "fastmri_dirs.yaml"
     knee_path = fetch_dir("knee_path", path_config)
     brain_path = fetch_dir("brain_path", path_config)
-    logdir = fetch_dir("log_path", path_config) / "unet" / "unet_demo"
+    logdir = fetch_dir("log_path", path_config) / "unet" / "overfit-on-batch"
 
     parent_parser = ArgumentParser(add_help=False)
 
     parser = UnetModule.add_model_specific_args(parent_parser)
     parser = Trainer.add_argparse_args(parser)
 
-    num_gpus = 1
+    num_gpus = 4
     backend = "ddp"
     batch_size = 1 if backend == "ddp" else num_gpus
 
@@ -68,9 +68,9 @@ def build_args():
         chans=32,
         num_pool_layers=4,
         drop_prob=0.0,
-        mask_type="random",
-        center_fractions=[0.08],
-        accelerations=[4],
+        mask_type="equispaced",
+        center_fractions=[0.08, 0.04],
+        accelerations=[4, 8],
         lr=0.001,
         lr_step_size=40,
         lr_gamma=0.1,
@@ -92,6 +92,8 @@ def build_args():
         distributed_backend=backend,
         seed=42,
         deterministic=True,
+        weights_summary='full',
+        fast_dev_run = True
     )
 
     parser.add_argument("--mode", default="train", type=str)
