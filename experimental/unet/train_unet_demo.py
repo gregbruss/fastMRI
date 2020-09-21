@@ -92,7 +92,6 @@ def build_args():
         distributed_backend=backend,
         seed=42,
         deterministic=True,
-        weights_summary='full',
         fast_dev_run = True
     )
 

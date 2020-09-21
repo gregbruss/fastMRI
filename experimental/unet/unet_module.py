@@ -87,7 +87,8 @@ class UnetModule(MriModule):
 
     def forward(self, image):
         # Different forward call for multi-channel data
-        return self.unet(image).squeeze(1)
+        print("The image shape is: ", image.shape)
+        return self.unet(image).unsqueeze(1)
 
     def training_step(self, batch, batch_idx):
         image, target, _, _, _, _ = batch
@@ -273,6 +274,7 @@ class DataTransform(object):
             image = fastmri.rss(image)
             # Multi-channel input. e.g: [384, 384] --> [4, 384, 384]. 4 channels, make sure in_chans=4, out_chans=4
             image = torch.stack([image for i in range(4)], dim = 0)
+            print("RSS Applied. The image shape is: ", image.shape)
             
 
         # normalize input
