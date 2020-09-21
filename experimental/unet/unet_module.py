@@ -100,8 +100,12 @@ class UnetModule(MriModule):
     def validation_step(self, batch, batch_idx):
         image, target, mean, std, fname, slice_num = batch
         output = self(image)
+        print(f"In the validation step of UnetModule, the output is of size {output.shape}")
         mean = mean.unsqueeze(1).unsqueeze(2)
+        print(f"In the validation step of UnetModule, the mean has value {mean}")
         std = std.unsqueeze(1).unsqueeze(2)
+        print(f"In the validation step of UnetModule, the stddev has value {std}")
+
 
         # hash strings to int so pytorch can concat them
         fnumber = torch.zeros(len(fname), dtype=torch.long, device=output.device)
@@ -109,6 +113,10 @@ class UnetModule(MriModule):
             fnumber[i] = (
                 int(hashlib.sha256(fn.encode("utf-8")).hexdigest(), 16) % 10 ** 12
             )
+        
+        print(f"fname: {fnumber}")
+        print(f"slice: {slice_num}")
+        print(f"val_loss: {F.l1_loss(output, target)}")
 
         return {
             "fname": fnumber,
@@ -117,6 +125,7 @@ class UnetModule(MriModule):
             "target": target * std + mean,
             "val_loss": F.l1_loss(output, target),
         }
+
 
     def test_step(self, batch, batch_idx):
         image, _, mean, std, fname, slice_num = batch
@@ -236,20 +245,20 @@ class DataTransform(object):
                 fname (str): File name.
                 slice_num (int): Serial number of the slice.
         """
-        print("kspace loading in... The size of kspace is: ", kspace.shape)
+        #print("kspace loading in... The size of kspace is: ", kspace.shape)
         kspace = transforms.to_tensor(kspace)
-        print("Converted to kspace tensor. The size of kspace is now: ", kspace.shape)
+        #print("Converted to kspace tensor. The size of kspace is now: ", kspace.shape)
         # apply mask
         if self.mask_func:
             seed = None if not self.use_seed else tuple(map(ord, fname))
-            print("Applying mask: ")
+            #print("Applying mask: ")
             masked_kspace, mask = transforms.apply_mask(kspace, self.mask_func, seed)
         else:
             masked_kspace = kspace
 
         # inverse Fourier transform to get zero filled solution
         image = fastmri.ifft2c(masked_kspace)
-        print("Calculating iFT to get zero filled image. The size of the image is now: ", image.shape)
+        #print("Calculating iFT to get zero filled image. The size of the image is now: ", image.shape)
 
         # crop input to correct size
         if target is not None:
@@ -262,19 +271,17 @@ class DataTransform(object):
             crop_size = (image.shape[-2], image.shape[-2])
 
         image = transforms.complex_center_crop(image, crop_size)
-        print("The image is being cropped to the center region. We now have multicoil, complex data, of dimension: ", image.shape)
+        #print("The image is being cropped to the center region. We now have multicoil, complex data, of dimension: ", image.shape)
 
         # absolute value
         image = fastmri.complex_abs(image)
-        print("Calculating absolute value of multicoil, complex data. The dimension is now: ", image.shape)
+        
 
         # apply Root-Sum-of-Squares if multicoil data
         if self.which_challenge == "multicoil":
-            print("This is multicoil data. Running RSS coil combination on image with dimensions: ", image.shape)
             image = fastmri.rss(image)
-            print("RSS Coil Combination complete. The image is now of size: ", image.shape)
-            image = torch.stack([image for i in range(4)], dim = 0)
-            print("Multiplying the image by 4 along the last axis to simulate multiple echoes. The image is now of dimension: ",image.shape)
+            #image = torch.stack([image for i in range(4)], dim = 0)
+            
 
         # normalize input
         image, mean, std = transforms.normalize_instance(image, eps=1e-11)
@@ -284,9 +291,10 @@ class DataTransform(object):
         if target is not None:
             target = transforms.to_tensor(target)
             target = transforms.center_crop(target, crop_size)
+            #target = torch.stack([target for i in range(4)], dim = 0)
             target = transforms.normalize(target, mean, std, eps=1e-11)
             target = target.clamp(-6, 6)
         else:
             target = torch.Tensor([0])
-
+        
         return image, target, mean, std, fname, slice_num
