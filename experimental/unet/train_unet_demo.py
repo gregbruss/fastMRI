@@ -57,14 +57,14 @@ def build_args():
     parser = UnetModule.add_model_specific_args(parent_parser)
     parser = Trainer.add_argparse_args(parser)
 
-    num_gpus = 4
+    num_gpus = 1
     backend = "ddp"
     batch_size = 1 if backend == "ddp" else num_gpus
 
     # module config
     config = dict(
-        in_chans=1,
-        out_chans=1,
+        in_chans=4,
+        out_chans=4,
         chans=32,
         num_pool_layers=4,
         drop_prob=0.0,
