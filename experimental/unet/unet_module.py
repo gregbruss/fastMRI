@@ -100,12 +100,8 @@ class UnetModule(MriModule):
     def validation_step(self, batch, batch_idx):
         image, target, mean, std, fname, slice_num = batch
         output = self(image)
-        print(f"In the validation step of UnetModule, the output is of size {output.shape}")
         mean = mean.unsqueeze(1).unsqueeze(2)
-        print(f"In the validation step of UnetModule, the mean has value {mean}")
         std = std.unsqueeze(1).unsqueeze(2)
-        print(f"In the validation step of UnetModule, the stddev has value {std}")
-
 
         # hash strings to int so pytorch can concat them
         fnumber = torch.zeros(len(fname), dtype=torch.long, device=output.device)
@@ -245,20 +241,16 @@ class DataTransform(object):
                 fname (str): File name.
                 slice_num (int): Serial number of the slice.
         """
-        #print("kspace loading in... The size of kspace is: ", kspace.shape)
         kspace = transforms.to_tensor(kspace)
-        #print("Converted to kspace tensor. The size of kspace is now: ", kspace.shape)
         # apply mask
         if self.mask_func:
             seed = None if not self.use_seed else tuple(map(ord, fname))
-            #print("Applying mask: ")
             masked_kspace, mask = transforms.apply_mask(kspace, self.mask_func, seed)
         else:
             masked_kspace = kspace
 
         # inverse Fourier transform to get zero filled solution
         image = fastmri.ifft2c(masked_kspace)
-        #print("Calculating iFT to get zero filled image. The size of the image is now: ", image.shape)
 
         # crop input to correct size
         if target is not None:
@@ -271,7 +263,6 @@ class DataTransform(object):
             crop_size = (image.shape[-2], image.shape[-2])
 
         image = transforms.complex_center_crop(image, crop_size)
-        #print("The image is being cropped to the center region. We now have multicoil, complex data, of dimension: ", image.shape)
 
         # absolute value
         image = fastmri.complex_abs(image)
@@ -280,7 +271,8 @@ class DataTransform(object):
         # apply Root-Sum-of-Squares if multicoil data
         if self.which_challenge == "multicoil":
             image = fastmri.rss(image)
-            #image = torch.stack([image for i in range(4)], dim = 0)
+            # Multi-channel input. e.g: [384, 384] --> [4, 384, 384]. 4 channels, make sure in_chans=4, out_chans=4
+            image = torch.stack([image for i in range(4)], dim = 0)
             
 
         # normalize input
@@ -291,7 +283,9 @@ class DataTransform(object):
         if target is not None:
             target = transforms.to_tensor(target)
             target = transforms.center_crop(target, crop_size)
-            #target = torch.stack([target for i in range(4)], dim = 0)
+
+            # Multi-channel target
+            target = torch.stack([target for i in range(4)], dim = 0)
             target = transforms.normalize(target, mean, std, eps=1e-11)
             target = target.clamp(-6, 6)
         else:
