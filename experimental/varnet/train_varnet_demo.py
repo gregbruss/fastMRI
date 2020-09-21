@@ -48,6 +48,7 @@ def build_args():
     # ------------------------
     path_config = pathlib.Path.cwd() / ".." / ".." / "fastmri_dirs.yaml"
     knee_path = fetch_dir("knee_path", path_config)
+    brain_path = fetch_dir("brain_path", path_config)
     logdir = fetch_dir("log_path", path_config) / "varnet" / "varnet_demo"
 
     parent_parser = ArgumentParser(add_help=False)
@@ -73,7 +74,7 @@ def build_args():
         lr_step_size=40,
         lr_gamma=0.1,
         weight_decay=0.0,
-        data_path=knee_path,
+        data_path=brain_path,
         challenge="multicoil",
         exp_dir=logdir,
         exp_name="varnet_demo",
@@ -90,6 +91,7 @@ def build_args():
         distributed_backend=backend,
         seed=42,
         deterministic=True,
+        overfit_batches=1
     )
 
     parser.add_argument("--mode", default="train", type=str)

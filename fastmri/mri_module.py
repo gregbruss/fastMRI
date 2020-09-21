@@ -183,9 +183,27 @@ class MriModule(pl.LightningModule):
         val_logs = {key: value.cpu() for key, value in val_logs.items()}
         val_logs["device"] = device
 
+        print("End of Validation Step has been reached!...Saving this val log now!")
+        
+        for k, v in val_logs.items():
+            if k == "device":
+                continue
+            print(k, v.ndim)
+
         return val_logs
 
     def validation_epoch_end(self, val_logs):
+        
+        for k, v in val_logs[0].items():
+            if k == "device":
+                continue
+            print(k, val_logs[0][f"{k}"].ndim)
+
+        
+        for output in val_logs[0]["output"]:
+            print("outputs: ", len(output))
+
+
         assert val_logs[0]["output"].ndim == 3
         device = val_logs[0]["device"]
 
