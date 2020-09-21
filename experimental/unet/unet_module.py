@@ -86,6 +86,7 @@ class UnetModule(MriModule):
         )
 
     def forward(self, image):
+        # Might need to change for multi-channel forward pass
         return self.unet(image.unsqueeze(1)).squeeze(1)
 
     def training_step(self, batch, batch_idx):
