@@ -57,7 +57,7 @@ def build_args():
     parser = UnetModule.add_model_specific_args(parent_parser)
     parser = Trainer.add_argparse_args(parser)
 
-    num_gpus = 4
+    num_gpus = 1
     backend = "ddp"
     batch_size = 1 if backend == "ddp" else num_gpus
 
