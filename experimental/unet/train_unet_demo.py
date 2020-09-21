@@ -63,8 +63,8 @@ def build_args():
 
     # module config
     config = dict(
-        in_chans=1,
-        out_chans=1,
+        in_chans=4,
+        out_chans=4,
         chans=32,
         num_pool_layers=4,
         drop_prob=0.0,

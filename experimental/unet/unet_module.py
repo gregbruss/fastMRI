@@ -88,7 +88,7 @@ class UnetModule(MriModule):
     def forward(self, image):
         print(f"Running forward pass from unet module on image of shape {image.shape}")
         print(f"The Unet receives the shape of the image, which is {image.shape}")
-        return self.unet(image.unsqueeze(1)).squeeze(1)
+        return self.unet(image).squeeze(1)
 
     def training_step(self, batch, batch_idx):
         image, target, _, _, _, _ = batch
@@ -287,7 +287,7 @@ class DataTransform(object):
             #print("This is multicoil data. Running RSS coil combination on image with dimensions: ", image.shape)
             image = fastmri.rss(image)
             #print("RSS Coil Combination complete. The image is now of size: ", image.shape)
-            #image = torch.stack([image for i in range(4)], dim = 0)
+            image = torch.stack([image for i in range(4)], dim = 0)
             #print("Multiplying the image by 4 along the last axis to simulate multiple echoes. The image is now of dimension: ",image.shape)
 
         # normalize input
@@ -299,7 +299,7 @@ class DataTransform(object):
             target = transforms.to_tensor(target)
             #print("Converting target to torch tensor. The shape is now: ", target.shape)
             target = transforms.center_crop(target, crop_size)
-            #target = torch.stack([target for i in range(4)], dim = 0)
+            target = torch.stack([target for i in range(4)], dim = 0)
             #print("Cropping target. The shape is now: ", target.shape)
             target = transforms.normalize(target, mean, std, eps=1e-11)
             #print("Normalizing target. The shape is now: ", target.shape)
