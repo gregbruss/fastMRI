@@ -1,6 +1,5 @@
 """
 Copyright (c) Facebook, Inc. and its affiliates.
-
 This source code is licensed under the MIT license found in the
 LICENSE file in the root directory of this source tree.
 """
@@ -18,7 +17,6 @@ from fastmri import MriModule
 from fastmri.data import transforms
 from fastmri.data.subsample import create_mask_for_mask_type
 from fastmri.models import Unet
-import numpy as np
 
 
 class UnetModule(MriModule):
@@ -86,31 +84,21 @@ class UnetModule(MriModule):
         )
 
     def forward(self, image):
-        print(f"Running forward pass from unet module on image of shape {image.shape}")
-        print(f"The Unet receives the shape of the image, which is {image.shape}")
-        return self.unet(image).squeeze(1)
+        return self.unet(image.unsqueeze(1)).squeeze(1)
 
     def training_step(self, batch, batch_idx):
         image, target, _, _, _, _ = batch
-        print(f"In the training step of UnetModule, the image is of size {image.shape}")
         output = self(image)
-        print(f"In the training step, the output is of size {output.shape}")
         loss = F.l1_loss(output, target)
-        print("The L1 loss between the image and the output is ", loss)
         logs = {"loss": loss.detach()}
-        print("The loss has been added to logs.")
 
         return dict(loss=loss, log=logs)
 
     def validation_step(self, batch, batch_idx):
         image, target, mean, std, fname, slice_num = batch
         output = self(image)
-        print(f"In the validation step of UnetModule, the output is of size {output.shape}")
         mean = mean.unsqueeze(1).unsqueeze(2)
-        print(f"In the validation step of UnetModule, the mean has value {mean}")
         std = std.unsqueeze(1).unsqueeze(2)
-        print(f"In the validation step of UnetModule, the stddev has value {std}")
-
 
         # hash strings to int so pytorch can concat them
         fnumber = torch.zeros(len(fname), dtype=torch.long, device=output.device)
@@ -118,10 +106,6 @@ class UnetModule(MriModule):
             fnumber[i] = (
                 int(hashlib.sha256(fn.encode("utf-8")).hexdigest(), 16) % 10 ** 12
             )
-        
-        print(f"fname: {fnumber}")
-        print(f"slice: {slice_num}")
-        print(f"val_loss: {F.l1_loss(output, target)}")
 
         return {
             "fname": fnumber,
@@ -130,7 +114,6 @@ class UnetModule(MriModule):
             "target": target * std + mean,
             "val_loss": F.l1_loss(output, target),
         }
-
 
     def test_step(self, batch, batch_idx):
         image, _, mean, std, fname, slice_num = batch
@@ -203,16 +186,16 @@ class UnetModule(MriModule):
         return parser
 
 
-class DataTransform(object):
+class DataTransform(object): 
     """
     Data Transformer for training U-Net models.
     """
 
-    def __init__(self, which_challenge, mask_func=None, use_seed=True):
+    def __init__(self, which_challenge, use_seed=True):
         """
         Args:
             which_challenge (str): Either "singlecoil" or "multicoil" denoting
-                the dataset.
+                the dataset, or multicoil 😊
             mask_func (fastmri.data.subsample.MaskFunc): A function that can
                 create a mask of appropriate shape.
             use_seed (bool): If true, this class computes a pseudo random
@@ -220,26 +203,23 @@ class DataTransform(object):
                 same mask is used for all the slices of a given volume every
                 time.
         """
-        if which_challenge not in ("singlecoil", "multicoil"):
-            raise ValueError(f'Challenge should either be "singlecoil" or "multicoil"')
+        if which_challenge not in ("singlecoil", "multicoil", "multiecho"):
+            raise ValueError(f'Challenge should be either "multicoil" or "multiecho"')
 
-        self.mask_func = mask_func
+        
         self.which_challenge = which_challenge
         self.use_seed = use_seed
 
-    def __call__(self, kspace, mask, target, attrs, fname, slice_num):
+    def __call__(self, image, target, attrs, fname, slice_num):
         """
         Args:
-            kspace (numpy.array): Input k-space of shape (num_coils, rows,
-                cols, 2) for multi-coil data or (rows, cols, 2) for single coil
-                data.
-            mask (numpy.array): Mask from the test dataset.
+            undersampled_image (numpy.array): Multi-echo input image of shape
+             (num_echos, rows, cols) 
             target (numpy.array): Target image.
             attrs (dict): Acquisition related information stored in the HDF5
                 object.
             fname (str): File name.
             slice_num (int): Serial number of the slice.
-
         Returns:
             (tuple): tuple containing:
                 image (torch.Tensor): Zero-filled input image.
@@ -250,64 +230,24 @@ class DataTransform(object):
                 fname (str): File name.
                 slice_num (int): Serial number of the slice.
         """
-        #print("kspace loading in... The size of kspace is: ", kspace.shape)
-        kspace = transforms.to_tensor(kspace)
-        #print("Converted to kspace tensor. The size of kspace is now: ", kspace.shape)
-        # apply mask
-        if self.mask_func:
-            seed = None if not self.use_seed else tuple(map(ord, fname))
-            #print("Applying mask: ")
-            masked_kspace, mask = transforms.apply_mask(kspace, self.mask_func, seed)
-        else:
-            masked_kspace = kspace
+        image = transforms.to_tensor(image)
 
-        # inverse Fourier transform to get zero filled solution
-        image = fastmri.ifft2c(masked_kspace)
-        #print("Calculating iFT to get zero filled image. The size of the image is now: ", image.shape)
+        image = transforms.center_crop(image, crop_size)
 
-        # crop input to correct size
-        if target is not None:
-            crop_size = (target.shape[-2], target.shape[-1])
-        else:
-            crop_size = (attrs["recon_size"][0], attrs["recon_size"][1])
-
-        # check for FLAIR 203
-        if image.shape[-2] < crop_size[1]:
-            crop_size = (image.shape[-2], image.shape[-2])
-
-        image = transforms.complex_center_crop(image, crop_size)
-        #print("The image is being cropped to the center region. We now have multicoil, complex data, of dimension: ", image.shape)
-
-        # absolute value
-        image = fastmri.complex_abs(image)
-        
-
-        # apply Root-Sum-of-Squares if multicoil data
-        if self.which_challenge == "multicoil":
-            #print("This is multicoil data. Running RSS coil combination on image with dimensions: ", image.shape)
-            image = fastmri.rss(image)
-            #print("RSS Coil Combination complete. The image is now of size: ", image.shape)
-            image = torch.stack([image for i in range(4)], dim = 0)
-            #print("Multiplying the image by 4 along the last axis to simulate multiple echoes. The image is now of dimension: ",image.shape)
 
         # normalize input
-        image, mean, std = transforms.normalize_instance(image, eps=1e-11)
+        mean = image.mean()
+        std = image.std()
+        image= transforms.normalize(image, mean, std, eps=1e-11)
         image = image.clamp(-6, 6)
 
         # normalize target
         if target is not None:
             target = transforms.to_tensor(target)
-            #print("Converting target to torch tensor. The shape is now: ", target.shape)
             target = transforms.center_crop(target, crop_size)
-            target = torch.stack([target for i in range(4)], dim = 0)
-            #print("Cropping target. The shape is now: ", target.shape)
             target = transforms.normalize(target, mean, std, eps=1e-11)
-            #print("Normalizing target. The shape is now: ", target.shape)
             target = target.clamp(-6, 6)
-            #print("Clamping target. The shape is now: ", target.shape)
         else:
             target = torch.Tensor([0])
-        
-        print("DataLoad complete. Returning: ", image.shape, target.shape, mean, std, fname, slice_num)
 
         return image, target, mean, std, fname, slice_num

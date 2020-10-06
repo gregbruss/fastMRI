@@ -136,17 +136,13 @@ class SliceDataset(Dataset):
         challenge,
         sample_rate=1,
         dataset_cache_file=pathlib.Path("dataset_cache.pkl"),
-        num_cols=None,
     ):
-        if challenge not in ("singlecoil", "multicoil"):
-            raise ValueError('challenge should be either "singlecoil" or "multicoil"')
+        if challenge not in ("singlecoil", "multicoil", "multiecho"):
+            raise ValueError('challenge should be either "singlecoil" or "multicoil", "multiecho"')
 
         self.dataset_cache_file = dataset_cache_file
 
         self.transform = transform
-        self.recons_key = (
-            "reconstruction_esc" if challenge == "singlecoil" else "reconstruction_rss"
-        )
         self.examples = []
 
         if self.dataset_cache_file.exists():
@@ -159,45 +155,14 @@ class SliceDataset(Dataset):
             files = list(pathlib.Path(root).iterdir())
             for fname in sorted(files):
                 try:
-                    with h5py.File(fname, "r") as hf:
-                        hdr = ismrmrd.xsd.CreateFromDocument(hf["ismrmrd_header"][()])
-                        enc = hdr.encoding[0]
-
-                        enc_size = (
-                            enc.encodedSpace.matrixSize.x,
-                            enc.encodedSpace.matrixSize.y,
-                            enc.encodedSpace.matrixSize.z,
-                        )
-                        recon_size = (
-                            enc.reconSpace.matrixSize.x,
-                            enc.reconSpace.matrixSize.y,
-                            enc.reconSpace.matrixSize.z,
-                        )
-
-                        enc_limits_center = enc.encodingLimits.kspace_encoding_step_1.center
-                        enc_limits_max = (
-                            enc.encodingLimits.kspace_encoding_step_1.maximum + 1
-                        )
-                        padding_left = enc_size[1] // 2 - enc_limits_center
-                        padding_right = padding_left + enc_limits_max
-
                         num_slices = hf["kspace"].shape[0]
-
-                    metadata = {
-                        "padding_left": padding_left,
-                        "padding_right": padding_right,
-                        "encoding_size": enc_size,
-                        "recon_size": recon_size,
-                    }
-
-                    self.examples += [
-                        (fname, slice_ind, metadata) for slice_ind in range(num_slices)
-                    ]
+                        self.examples += [(fname, slice_ind) for slice_ind in range(num_slices)]
                 except:
                     pass
 
             dataset_cache[root] = self.examples
             logging.info(f"Saving dataset cache to {self.dataset_cache_file}.")
+
             with open(self.dataset_cache_file, "wb") as f:
                 pickle.dump(dataset_cache, f)
         else:
@@ -209,25 +174,17 @@ class SliceDataset(Dataset):
             num_examples = round(len(self.examples) * sample_rate)
             self.examples = self.examples[:num_examples]
 
-        if num_cols:
-            self.examples = [
-                ex for ex in self.examples if ex[2]["encoding_size"][1] in num_cols
-            ]
-
     def __len__(self):
         return len(self.examples)
 
     def __getitem__(self, i):
-        fname, dataslice, metadata = self.examples[i]
+        fname, dataslice = self.examples[i]
 
         with h5py.File(fname, "r") as hf:
-            kspace = hf["kspace"][dataslice]
-
-            mask = np.asarray(hf["mask"]) if "mask" in hf else None
-
-            target = hf[self.recons_key][dataslice] if self.recons_key in hf else None
+            undersampled_image = hf["input"][dataslice]
+            target = hf["target"][dataslice] 
 
             attrs = dict(hf.attrs)
-            attrs.update(metadata)
+
 
         return self.transform(kspace, mask, target, attrs, fname.name, dataslice)
