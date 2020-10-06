@@ -110,7 +110,8 @@ class CombinedSliceDataset(Dataset):
 
 class SliceDataset(Dataset):
     """
-    A PyTorch Dataset that provides access to MR image slices.
+    A PyTorch Dataset that provides access to MR image slices. 
+    This is the main class used to load multi-echo data.
 
     Args:
         root (pathlib.Path): Path to the dataset.
