@@ -15,3 +15,4 @@ add_header.py
 fastmri_dirs.yaml
 dataset_cache.pkl
 devnotes.md
+*.h5
