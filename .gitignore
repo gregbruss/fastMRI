@@ -16,3 +16,5 @@ fastmri_dirs.yaml
 dataset_cache.pkl
 devnotes.md
 *.h5
+end-to-end.ipynb
+training_notebook.ipynb

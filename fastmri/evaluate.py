@@ -177,7 +177,7 @@ if __name__ == "__main__":
     )
     parser.add_argument(
         "--challenge",
-        choices=["singlecoil", "multicoil"],
+        choices=["singlecoil", "multicoil", "multiecho"],
         required=True,
         help="Which challenge",
     )

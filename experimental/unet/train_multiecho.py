@@ -1,10 +1,3 @@
-"""
-Copyright (c) Facebook, Inc. and its affiliates.
-
-This source code is licensed under the MIT license found in the
-LICENSE file in the root directory of this source tree.
-"""
-
 import pathlib
 import sys
 from argparse import ArgumentParser
@@ -20,7 +13,7 @@ import os
 os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID" 
 os.environ["CUDA_VISIBLE_DEVICES"]="1,2"
 
-
+# Main Call with args
 def main(args):
     """Main training routine."""
     # ------------------------
@@ -37,6 +30,7 @@ def main(args):
     # ------------------------
     # 3 START TRAINING OR TEST
     # ------------------------
+
     if args.mode == "train":
         trainer.fit(model)
     elif args.mode == "test":
@@ -51,13 +45,11 @@ def build_args():
     # TRAINING ARGUMENTS
     # ------------------------
     path_config = pathlib.Path.cwd() / ".." / ".." / "fastmri_dirs.yaml"
-    knee_path = fetch_dir("knee_path", path_config)
-    brain_path = fetch_dir("brain_path", path_config)
     me_path = fetch_dir("me_path", path_config)
     logdir = fetch_dir("log_path", path_config) / "unet" / "multi-echo-oct10"
 
+    # Parsing Arguments
     parent_parser = ArgumentParser(add_help=False)
-
     parser = UnetModule.add_model_specific_args(parent_parser)
     parser = Trainer.add_argparse_args(parser)
 

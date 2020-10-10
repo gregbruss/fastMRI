@@ -116,10 +116,10 @@ class SliceDataset(Dataset):
     Args:
         root (pathlib.Path): Path to the dataset.
         transform (callable): A callable object that pre-processes the raw data
-            into appropriate form. The transform function should take 'kspace',
-            'target', 'attributes', 'filename', and 'slice' as inputs. 'target'
+            into appropriate form. The transform function should take 'image',
+            'target', 'filename', and 'slice' as inputs. 'target'
             may be null for test data.
-        challenge (str): "singlecoil" or "multicoil" depending on which
+        challenge (str): "singlecoil" or "multicoil" or "multiecho" depending on which
             challenge to use.
         sample_rate (float, optional): A float between 0 and 1. This controls
             what fraction of the volumes should be loaded.
@@ -136,9 +136,10 @@ class SliceDataset(Dataset):
         challenge,
         sample_rate=1,
         dataset_cache_file=pathlib.Path("dataset_cache.pkl"),
+        num_cols
     ):
         if challenge not in ("singlecoil", "multicoil", "multiecho"):
-            raise ValueError('challenge should be either "singlecoil" or "multicoil", "multiecho"')
+            raise ValueError('challenge should be either "singlecoil" or "multicoil" or "multiecho"')
 
         self.dataset_cache_file = dataset_cache_file
 
@@ -154,11 +155,9 @@ class SliceDataset(Dataset):
         if dataset_cache.get(root) is None:
             files = list(pathlib.Path(root).iterdir())
             for fname in sorted(files):
-                try:
-                        num_slices = hf["kspace"].shape[0]
-                        self.examples += [(fname, slice_ind) for slice_ind in range(num_slices)]
-                except:
-                    pass
+                with h5py.File(fname, "r") as hf:
+                        num_slices = hf["input"].shape[0]  
+                        self.examples += [(fname, slice_ind) for slice_ind in range(50,60)]
 
             dataset_cache[root] = self.examples
             logging.info(f"Saving dataset cache to {self.dataset_cache_file}.")
@@ -181,10 +180,8 @@ class SliceDataset(Dataset):
         fname, dataslice = self.examples[i]
 
         with h5py.File(fname, "r") as hf:
-            undersampled_image = hf["input"][dataslice]
+            image = hf["input"][dataslice]
             target = hf["target"][dataslice] 
 
-            attrs = dict(hf.attrs)
 
-
-        return self.transform(kspace, mask, target, attrs, fname.name, dataslice)
+        return self.transform(image, target, fname.name, dataslice)

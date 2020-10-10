@@ -67,9 +67,6 @@ class UnetModule(MriModule):
         self.chans = chans
         self.num_pool_layers = num_pool_layers
         self.drop_prob = drop_prob
-        self.mask_type = mask_type
-        self.center_fractions = center_fractions
-        self.accelerations = accelerations
         self.lr = lr
         self.lr_step_size = lr_step_size
         self.lr_gamma = lr_gamma
@@ -84,6 +81,7 @@ class UnetModule(MriModule):
         )
 
     def forward(self, image):
+        print("Image shape passed to forward is:" ,image.shape)
         return self.unet(image.unsqueeze(1)).squeeze(1)
 
     def training_step(self, batch, batch_idx):
@@ -138,17 +136,10 @@ class UnetModule(MriModule):
         return [optim], [scheduler]
 
     def train_data_transform(self):
-        mask = create_mask_for_mask_type(
-            self.mask_type, self.center_fractions, self.accelerations,
-        )
-
-        return DataTransform(self.challenge, mask, use_seed=False)
+        return DataTransform(self.challenge, use_seed=False)
 
     def val_data_transform(self):
-        mask = create_mask_for_mask_type(
-            self.mask_type, self.center_fractions, self.accelerations,
-        )
-        return DataTransform(self.challenge, mask)
+        return DataTransform(self.challenge)
 
     def test_data_transform(self):
         return DataTransform(self.challenge)
@@ -195,9 +186,7 @@ class DataTransform(object):
         """
         Args:
             which_challenge (str): Either "singlecoil" or "multicoil" denoting
-                the dataset, or multicoil 😊
-            mask_func (fastmri.data.subsample.MaskFunc): A function that can
-                create a mask of appropriate shape.
+                the dataset, (or multiecho)!
             use_seed (bool): If true, this class computes a pseudo random
                 number generator seed from the filename. This ensures that the
                 same mask is used for all the slices of a given volume every
@@ -205,35 +194,31 @@ class DataTransform(object):
         """
         if which_challenge not in ("singlecoil", "multicoil", "multiecho"):
             raise ValueError(f'Challenge should be either "multicoil" or "multiecho"')
-
-        
         self.which_challenge = which_challenge
         self.use_seed = use_seed
 
-    def __call__(self, image, target, attrs, fname, slice_num):
+    def __call__(self, image, target, fname, slice_num):
         """
         Args:
             undersampled_image (numpy.array): Multi-echo input image of shape
              (num_echos, rows, cols) 
-            target (numpy.array): Target image.
-            attrs (dict): Acquisition related information stored in the HDF5
-                object.
+            target (numpy.array): Multi-Echo Target image.
             fname (str): File name.
             slice_num (int): Serial number of the slice.
         Returns:
             (tuple): tuple containing:
-                image (torch.Tensor): Zero-filled input image.
-                target (torch.Tensor): Target image converted to a torch
+                image (torch.Tensor): Cropped Multi-echo input-image (converted to Tensor)
+                target (torch.Tensor): Cropped Multi-echo target-image converted to a torch
                     Tensor.
-                mean (float): Mean value used for normalization.
-                std (float): Standard deviation value used for normalization.
                 fname (str): File name.
                 slice_num (int): Serial number of the slice.
         """
         image = transforms.to_tensor(image)
 
-        image = transforms.center_crop(image, crop_size)
+        # Cropping
+        crop_size = [100, 100]
 
+        image = transforms.center_crop(image, crop_size)
 
         # normalize input
         mean = image.mean()
@@ -250,4 +235,4 @@ class DataTransform(object):
         else:
             target = torch.Tensor([0])
 
-        return image, target, mean, std, fname, slice_num
+        return image, target, fname, slice_num

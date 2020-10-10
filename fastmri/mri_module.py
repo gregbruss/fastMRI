@@ -65,7 +65,7 @@ class MriModule(pl.LightningModule):
                 knee/path is the root directory with subdirectories
                 multicoil_train and multicoil_val, you would input knee/path for
                 data_path.
-            challenge (str): Name of challenge from ('multicoil', 'singlecoil').
+            challenge (str): Name of challenge from ('multicoil', 'singlecoil', 'multiecho').
             exp_dir (pathlib.Path): Top directory for where you want to store log
                 files.
             exp_name (str): Name of this experiment - this will store logs in
@@ -203,15 +203,17 @@ class MriModule(pl.LightningModule):
         for output in val_logs[0]["output"]:
             print("outputs: ", len(output))
 
-
-        assert val_logs[0]["output"].ndim == 3
+        # Hold the assertion check for now
+        #assert val_logs[0]["output"].ndim == 3
         device = val_logs[0]["device"]
 
-        # run the visualizations
+        # Skip visualize for now
+        """
         self._visualize(
             val_outputs=[x["output"].numpy() for x in val_logs],
             val_targets=[x["target"].numpy() for x in val_logs],
         )
+        """
 
         # aggregate losses
         losses = []
